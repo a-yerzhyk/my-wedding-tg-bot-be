@@ -1,6 +1,6 @@
 services:
-  tma-backend:
-    image: ghcr.io/a-yerzhyk/wedding-backend:latest
+  wedding-api:
+    image: ghcr.io/a-yerzhyk/wedding-api:latest
     restart: always
     ports:
       - "4000:4000"
