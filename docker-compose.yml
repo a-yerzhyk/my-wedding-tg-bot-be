@@ -1,0 +1,22 @@
+services:
+  tma-backend:
+    image: ghcr.io/a-yerzhyk/wedding-backend:latest
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      MONGO_URL: ${MONGO_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      BOT_TOKEN: ${BOT_TOKEN}
+      ADMIN_TELEGRAM_IDS: ${ADMIN_TELEGRAM_IDS}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+    networks:
+      - backend_default
+
+networks:
+  backend_default:
+    external: true
