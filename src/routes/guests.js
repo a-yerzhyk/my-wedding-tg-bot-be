@@ -30,7 +30,7 @@ module.exports = async (fastify) => {
     const user = await users.findOne({ _id: request.user.id })
     
     if (!user) {
-      return reply.code(404).send({ message: 'User not found' })
+      return reply.code(404).send({ message: 'User not found', request: request })
     }
     
     if (user.approvalStatus) {
