@@ -85,8 +85,7 @@ module.exports = async (fastify) => {
           firstName: telegramUser.first_name,
           lastName: telegramUser.last_name || '',
           username: telegramUser.username || '',
-          role,
-          approvalStatus: user.approvalStatus ?? null
+          role
         },
         $setOnInsert: {
           // admins are pre-approved, guests start with null (not yet requested)
@@ -110,7 +109,8 @@ module.exports = async (fastify) => {
       user: {
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role
+        role: user.role,
+        approvalStatus: user.approvalStatus ?? null
       }
     }
   })
