@@ -3,10 +3,12 @@ const { getCollection } = require('../models/user')
 
 /**
  * Validates that initData genuinely came from Telegram.
+ * Can be passed multiple bot tokens separated by commas.
  * https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
  */
 function validateTelegramData(initData, botToken) {
   const params = new URLSearchParams(initData)
+  const tokens = botToken.split(',')
   const hash = params.get('hash')
   if (!hash) return false
   params.delete('hash')
@@ -16,17 +18,26 @@ function validateTelegramData(initData, botToken) {
     .map(([k, v]) => `${k}=${v}`)
     .join('\n')
 
-  const secretKey = crypto
-    .createHmac('sha256', 'WebAppData')
-    .update(botToken)
-    .digest()
+  let isValid = false
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+    const secretKey = crypto
+      .createHmac('sha256', 'WebAppData')
+      .update(token)
+      .digest()
+  
+    const expectedHash = crypto
+      .createHmac('sha256', secretKey)
+      .update(dataCheckString)
+      .digest('hex')
+    
+    if (expectedHash === hash) {
+      isValid = true
+      break
+    }
+  }
 
-  const expectedHash = crypto
-    .createHmac('sha256', secretKey)
-    .update(dataCheckString)
-    .digest('hex')
-
-  return expectedHash === hash
+  return isValid
 }
 
 module.exports = async (fastify) => {
