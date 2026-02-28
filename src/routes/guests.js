@@ -25,10 +25,11 @@ module.exports = async (fastify) => {
       }
     }
   }, async (request, reply) => {
+    const { ObjectId } = fastify.mongo
     const users = getUsers(fastify.mongo.db)
 
-    const user = await users.findOne({ _id: request.user.id })
-    console.log('request', request)
+    const user = await users.findOne({ _id: new ObjectId(request.user.id) })
+    
     if (!user) {
       return reply.code(404).send({ message: 'User not found' })
     }
@@ -43,7 +44,7 @@ module.exports = async (fastify) => {
     }
 
     await users.updateOne(
-      { _id: request.user.id },
+      { _id: new ObjectId(request.user.id) },
       { $set: { approvalStatus: 'pending' } }
     )
 

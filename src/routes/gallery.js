@@ -29,6 +29,7 @@ module.exports = async (fastify) => {
       }
     }
   }, async (request, reply) => {
+    const { ObjectId } = fastify.mongo
     const data = await request.file()
 
     if (!data) {
@@ -47,7 +48,7 @@ module.exports = async (fastify) => {
     const users = getUsers(fastify.mongo.db)
 
     // Check upload limit
-    const existingGallery = await galleries.findOne({ userId: request.user.id })
+    const existingGallery = await galleries.findOne({ userId: new ObjectId(request.user.id) })
     if (existingGallery) {
       const photoCount = await media.countDocuments({
         galleryId: existingGallery._id,
@@ -68,14 +69,14 @@ module.exports = async (fastify) => {
     })
 
     const now = new Date()
-    const user = await users.findOne({ _id: request.user.id })
+    const user = await users.findOne({ _id: new ObjectId(request.user.id) })
 
     // Find or create gallery for this guest
     let gallery = existingGallery
 
     if (!gallery) {
       const result = await galleries.insertOne({
-        userId: request.user.id,
+        userId: new ObjectId(request.user.id),
         guestName: `${user.firstName} ${user.lastName}`.trim(),
         coverPhotoUrl: uploadResult.thumbnailUrl, // first photo becomes the cover
         photoCount: 0,
@@ -88,7 +89,7 @@ module.exports = async (fastify) => {
     // Save media record
     await media.insertOne({
       galleryId: gallery._id,
-      userId: request.user.id,
+      userId: new ObjectId(request.user.id),
       type: 'photo',
       // When adding video: type: data.mimetype.startsWith('video') ? 'video' : 'photo'
       cloudId: uploadResult.cloudId,
