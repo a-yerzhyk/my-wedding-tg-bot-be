@@ -28,7 +28,8 @@ fastify.addHook('preSerialization', async (request, reply, payload) => {
 fastify.register(require('@fastify/cors'), {
   origin: [
     'https://yz-wedding.vn.ua',
-    'http://dev-wedding.vn.ua:3000'
+    'http://dev-wedding.vn.ua:3000',
+    'https://micheal-binate-raegan.ngrok-free.dev'
   ],
   credentials: true
 })
