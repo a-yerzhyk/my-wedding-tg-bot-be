@@ -25,6 +25,14 @@ fastify.addHook('preSerialization', async (request, reply, payload) => {
   return transform(payload)
 })
 
+fastify.register(require('@fastify/cors'), {
+  origin: [
+    'https://yz-wedding.vn.ua',
+    'http://dev-wedding.vn.ua:3000'
+  ],
+  credentials: true
+})
+
 // Swagger — must be registered before routes
 fastify.register(require('@fastify/swagger'), {
   openapi: {
