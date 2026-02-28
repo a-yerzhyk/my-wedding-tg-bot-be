@@ -55,9 +55,8 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
-          required: ['token', 'user'],
+          required: ['user'],
           properties: {
-            token: { type: 'string' },
             user: {
               type: 'object',
               required: ['firstName', 'role'],
