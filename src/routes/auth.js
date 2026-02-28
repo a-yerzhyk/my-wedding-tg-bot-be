@@ -117,7 +117,7 @@ module.exports = async (fastify) => {
       .setCookie('jwt', token, {
         httpOnly: true,
         secure: true,
-        sameSite: 'strict',
+        sameSite: 'none',
         path: '/',
         maxAge: 3600 * 24 * 30
       })
