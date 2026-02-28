@@ -64,6 +64,8 @@ fastify.register(require('@fastify/swagger-ui'), {
   }
 })
 
+fastify.register(require('@fastify/cookie'))
+
 // Plugins
 fastify.register(require('./plugins/mongodb'))
 fastify.register(require('./plugins/jwt'))

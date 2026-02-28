@@ -105,13 +105,20 @@ module.exports = async (fastify) => {
       { expiresIn: '30d' }
     )
 
-    return {
-      token,
-      user: {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role
-      }
-    }
+    return reply
+      .setCookie('jwt', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 3600 * 24 * 30
+      })
+      .send({
+        user: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role
+        }
+      })
   })
 }
