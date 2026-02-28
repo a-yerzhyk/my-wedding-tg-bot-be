@@ -28,9 +28,9 @@ module.exports = async (fastify) => {
     const users = getUsers(fastify.mongo.db)
 
     const user = await users.findOne({ _id: request.user.id })
-    
+    console.log('request', request)
     if (!user) {
-      return reply.code(404).send({ message: 'User not found', request: request })
+      return reply.code(404).send({ message: 'User not found' })
     }
     
     if (user.approvalStatus) {
