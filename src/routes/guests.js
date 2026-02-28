@@ -10,7 +10,21 @@ module.exports = async (fastify) => {
    * Authenticated user sends a request to become a guest.
    * Can only be called once — subsequent calls return current status.
    */
-  fastify.post('/request', async (request, reply) => {
+  fastify.post('/request', {
+    schema: {
+      tags: ['Guests'],
+      summary: 'Submit request to become a guest',
+      security: [{ bearerAuth: [] }],
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const requests = getRequests(fastify.mongo.db)
 
     const existing = await requests.findOne({ userId: request.user.id })
@@ -35,7 +49,21 @@ module.exports = async (fastify) => {
    * GET /api/guests/request/me
    * User checks the status of their own request.
    */
-  fastify.get('/request/me', async (request, reply) => {
+  fastify.get('/request/me', {
+    schema: {
+      tags: ['Guests'],
+      summary: 'Check own request status',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['pending', 'approved', 'denied'] }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const requests = getRequests(fastify.mongo.db)
     const req = await requests.findOne({ userId: request.user.id })
     if (!req) return reply.code(404).send({ message: 'No request found' })
@@ -46,7 +74,36 @@ module.exports = async (fastify) => {
    * GET /api/guests/requests  [admin only]
    * Returns all guest requests enriched with Telegram user info.
    */
-  fastify.get('/requests', { onRequest: adminOnly }, async () => {
+  fastify.get('/requests', {
+    onRequest: adminOnly,
+    schema: {
+      tags: ['Guests'],
+      summary: 'List all guest requests (admin only)',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              _id: { type: 'string' },
+              userId: { type: 'string' },
+              status: { type: 'string' },
+              createdAt: { type: 'string' },
+              user: {
+                type: 'object',
+                properties: {
+                  firstName: { type: 'string' },
+                  lastName: { type: 'string' },
+                  username: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async () => {
     const requests = getRequests(fastify.mongo.db)
     const users = getUsers(fastify.mongo.db)
 
@@ -73,11 +130,28 @@ module.exports = async (fastify) => {
   fastify.patch('/requests/:requestId', {
     onRequest: adminOnly,
     schema: {
+      tags: ['Guests'],
+      summary: 'Approve or deny a guest request (admin only)',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: {
+          requestId: { type: 'string' }
+        }
+      },
       body: {
         type: 'object',
         required: ['action'],
         properties: {
           action: { type: 'string', enum: ['approve', 'deny'] }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
         }
       }
     }

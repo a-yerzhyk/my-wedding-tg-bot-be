@@ -37,11 +37,29 @@ module.exports = async (fastify) => {
    */
   fastify.post('/telegram', {
     schema: {
+      tags: ['Auth'],
+      summary: 'Authenticate via Telegram initData',
       body: {
         type: 'object',
         required: ['initData'],
         properties: {
           initData: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            token: { type: 'string' },
+            user: {
+              type: 'object',
+              properties: {
+                firstName: { type: 'string' },
+                lastName: { type: 'string' },
+                role: { type: 'string', enum: ['admin', 'guest'] }
+              }
+            }
+          }
         }
       }
     }

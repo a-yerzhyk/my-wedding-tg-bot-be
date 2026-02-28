@@ -11,6 +11,9 @@ module.exports = async (fastify) => {
    */
   fastify.post('/', {
     schema: {
+      tags: ['RSVP'],
+      summary: 'Submit or update RSVP',
+      security: [{ bearerAuth: [] }],
       body: {
         type: 'object',
         required: ['status'],
@@ -18,6 +21,14 @@ module.exports = async (fastify) => {
           status: { type: 'string', enum: ['attending', 'not_attending', 'maybe'] },
           guestCount: { type: 'number', minimum: 1, maximum: 10 },
           dietaryNotes: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
         }
       }
     }
@@ -46,7 +57,26 @@ module.exports = async (fastify) => {
    * GET /api/rsvp/me
    * Guest views their own RSVP.
    */
-  fastify.get('/me', async (request, reply) => {
+  fastify.get('/me', {
+    schema: {
+      tags: ['RSVP'],
+      summary: 'Get own RSVP',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            userId: { type: 'string' },
+            status: { type: 'string' },
+            guestCount: { type: 'number' },
+            dietaryNotes: { type: 'string' },
+            createdAt: { type: 'string' },
+            updatedAt: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const rsvps = getCollection(fastify.mongo.db)
     const rsvp = await rsvps.findOne({ userId: request.user.id })
     if (!rsvp) return reply.code(404).send({ message: 'No RSVP found yet' })
@@ -57,7 +87,29 @@ module.exports = async (fastify) => {
    * GET /api/rsvp/all  [admin only]
    * Returns all RSVPs enriched with guest names.
    */
-  fastify.get('/all', { onRequest: adminOnly }, async () => {
+  fastify.get('/all', {
+    onRequest: adminOnly,
+    schema: {
+      tags: ['RSVP'],
+      summary: 'Get all RSVPs (admin only)',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              userId: { type: 'string' },
+              status: { type: 'string' },
+              guestCount: { type: 'number' },
+              dietaryNotes: { type: 'string' },
+              guest: { type: 'string' }
+            }
+          }
+        }
+      }
+    }
+  }, async () => {
     const rsvps = getCollection(fastify.mongo.db)
     const users = getUsers(fastify.mongo.db)
 
@@ -78,7 +130,25 @@ module.exports = async (fastify) => {
    * GET /api/rsvp/stats  [admin only]
    * Returns attendance summary counts.
    */
-  fastify.get('/stats', { onRequest: adminOnly }, async () => {
+  fastify.get('/stats', {
+    onRequest: adminOnly,
+    schema: {
+      tags: ['RSVP'],
+      summary: 'Get attendance stats (admin only)',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            attending: { type: 'number' },
+            notAttending: { type: 'number' },
+            maybe: { type: 'number' },
+            totalGuests: { type: 'number' }
+          }
+        }
+      }
+    }
+  }, async () => {
     const rsvps = getCollection(fastify.mongo.db)
 
     const [attending, notAttending, maybe] = await Promise.all([

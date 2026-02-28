@@ -17,7 +17,21 @@ module.exports = async (fastify) => {
    * Auto-creates a gallery on first upload.
    */
   fastify.post('/upload', {
-    onRequest: confirmedGuest
+    onRequest: confirmedGuest,
+    schema: {
+      tags: ['Gallery'],
+      summary: 'Upload a photo (confirmed guests only)',
+      security: [{ bearerAuth: [] }],
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            url: { type: 'string' },
+            thumbnailUrl: { type: 'string' }
+          }
+        }
+      }
+    }
   }, async (request, reply) => {
     const data = await request.file()
 
@@ -110,7 +124,29 @@ module.exports = async (fastify) => {
    * Visible to guests.
    */
   fastify.get('/', {
-    onRequest: confirmedGuest
+    schema: {
+      tags: ['Gallery'],
+      summary: 'List all guest galleries with previews',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              _id: { type: 'string' },
+              guestName: { type: 'string' },
+              coverPhotoUrl: { type: 'string' },
+              photoCount: { type: 'number' },
+              previews: {
+                type: 'array',
+                items: { type: 'string' }
+              }
+            }
+          }
+        }
+      }
+    }
   }, async () => {
     const galleries = getGalleries(fastify.mongo.db)
     const media = getMedia(fastify.mongo.db)
@@ -142,7 +178,39 @@ module.exports = async (fastify) => {
    * Visible to guests.
    */
   fastify.get('/:galleryId', {
-    onRequest: confirmedGuest
+    schema: {
+      tags: ['Gallery'],
+      summary: 'Get a specific guest gallery with all photos',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: {
+          galleryId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            guestName: { type: 'string' },
+            photoCount: { type: 'number' },
+            photos: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  _id: { type: 'string' },
+                  url: { type: 'string' },
+                  thumbnailUrl: { type: 'string' },
+                  uploadedAt: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }, async (request, reply) => {
     const { ObjectId } = fastify.mongo
     const galleries = getGalleries(fastify.mongo.db)
@@ -172,7 +240,27 @@ module.exports = async (fastify) => {
    * DELETE /api/gallery/media/:mediaId
    * Deletes a single photo. Allowed for: admin or the photo owner.
    */
-  fastify.delete('/media/:mediaId', async (request, reply) => {
+  fastify.delete('/media/:mediaId', {
+    schema: {
+      tags: ['Gallery'],
+      summary: 'Delete a photo (admin or owner)',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: {
+          mediaId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const { ObjectId } = fastify.mongo
     const media = getMedia(fastify.mongo.db)
     const galleries = getGalleries(fastify.mongo.db)
