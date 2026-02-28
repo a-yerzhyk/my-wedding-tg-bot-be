@@ -7,22 +7,27 @@ function validateTelegramData(initData, botToken) {
   if (!hash) return false
   params.delete('hash')
 
-  const dataCheckString = Array.from(params.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${v}`)
-    .join('\n')
+  const tokens = botToken.split(',')
+  let isValid = false
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+    const secretKey = crypto
+      .createHmac('sha256', 'WebAppData')
+      .update(token)
+      .digest()
+  
+    const expectedHash = crypto
+      .createHmac('sha256', secretKey)
+      .update(dataCheckString)
+      .digest('hex')
+    
+    if (expectedHash === hash) {
+      isValid = true
+      break
+    }
+  }
 
-  const secretKey = crypto
-    .createHmac('sha256', 'WebAppData')
-    .update(botToken)
-    .digest()
-
-  const expectedHash = crypto
-    .createHmac('sha256', secretKey)
-    .update(dataCheckString)
-    .digest('hex')
-
-  return expectedHash === hash
+  return isValid
 }
 
 module.exports = async (fastify) => {
@@ -40,9 +45,8 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
-          required: ['token', 'user'],
+          required: ['user'],
           properties: {
-            token: { type: 'string' },
             user: {
               type: 'object',
               required: ['firstName', 'role'],
@@ -104,14 +108,21 @@ module.exports = async (fastify) => {
       { expiresIn: '30d' }
     )
 
-    return {
-      token,
-      user: {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        approvalStatus: user.approvalStatus ?? null
-      }
-    }
+    return reply
+      .setCookie('jwt', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 3600 * 24 * 30
+      })
+      .send({
+        user: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          approvalStatus: user.approvalStatus ?? null
+        }
+      })
   })
 }

@@ -37,6 +37,10 @@ module.exports = async (fastify) => {
       return reply.code(200).send({ message: 'Already approved' })
     }
 
+    if (user.approvalStatus === 'denied') {
+      return reply.code(200).send({ message: 'Already denied' })
+    }
+
     await users.updateOne(
       { _id: request.user.id },
       { $set: { approvalStatus: 'pending' } }
