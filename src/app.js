@@ -1,4 +1,29 @@
-const fastify = require('fastify')({ logger: true })
+const fastify = require('fastify')({
+  logger: true,
+  ajv: {
+    customOptions: {
+      coerceTypes: 'array'
+    }
+  }
+})
+
+// Transform _id to id in all responses
+fastify.addHook('preSerialization', async (request, reply, payload) => {
+  const transform = (obj) => {
+    if (Array.isArray(obj)) return obj.map(transform)
+    if (obj && typeof obj === 'object') {
+      const result = {}
+      for (const [key, value] of Object.entries(obj)) {
+        const newKey = key === '_id' ? 'id' : key
+        result[newKey] = transform(value)
+      }
+      return result
+    }
+    return obj
+  }
+
+  return transform(payload)
+})
 
 // Swagger — must be registered before routes
 fastify.register(require('@fastify/swagger'), {
@@ -25,9 +50,9 @@ fastify.register(require('@fastify/swagger'), {
 })
 
 fastify.register(require('@fastify/swagger-ui'), {
-  routePrefix: '/docs',
+  routePrefix: '/api/docs',
   uiConfig: {
-    persistAuthorization: true  // keeps JWT filled in between page refreshes
+    persistAuthorization: true
   }
 })
 
@@ -38,8 +63,8 @@ fastify.register(require('./plugins/multipart'))
 
 // Routes
 fastify.register(require('./routes/auth'),    { prefix: '/api/auth' })
-fastify.register(require('./routes/guests'), { prefix: '/api/guests' })
 fastify.register(require('./routes/rsvp'),    { prefix: '/api/rsvp' })
 fastify.register(require('./routes/gallery'), { prefix: '/api/gallery' })
+fastify.register(require('./routes/guests'),  { prefix: '/api/guests' })
 
 module.exports = fastify

@@ -124,9 +124,9 @@ module.exports = async (fastify) => {
           type: 'array',
           items: {
             type: 'object',
-            required: ['_id', 'guestName', 'photoCount', 'previews'],
+            required: ['id', 'guestName', 'photoCount', 'previews'],
             properties: {
-              _id: { type: 'string' },
+              id: { type: 'string' },
               guestName: { type: 'string' },
               coverPhotoUrl: { type: 'string' },
               photoCount: { type: 'number' },
@@ -176,18 +176,18 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
-          required: ['_id', 'guestName', 'photoCount', 'photos'],
+          required: ['id', 'guestName', 'photoCount', 'photos'],
           properties: {
-            _id: { type: 'string' },
+            id: { type: 'string' },
             guestName: { type: 'string' },
             photoCount: { type: 'number' },
             photos: {
               type: 'array',
               items: {
                 type: 'object',
-                required: ['_id', 'url', 'thumbnailUrl', 'uploadedAt'],
+                required: ['id', 'url', 'thumbnailUrl', 'uploadedAt'],
                 properties: {
-                  _id: { type: 'string' },
+                  id: { type: 'string' },
                   url: { type: 'string' },
                   thumbnailUrl: { type: 'string' },
                   uploadedAt: { type: 'string' }

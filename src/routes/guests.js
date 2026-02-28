@@ -74,9 +74,9 @@ module.exports = async (fastify) => {
           type: 'array',
           items: {
             type: 'object',
-            required: ['_id', 'userId', 'status', 'createdAt'],
+            required: ['id', 'userId', 'status', 'createdAt'],
             properties: {
-              _id: { type: 'string' },
+              id: { type: 'string' },
               userId: { type: 'string' },
               status: { type: 'string' },
               createdAt: { type: 'string' },
