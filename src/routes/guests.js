@@ -1,10 +1,14 @@
-const { getCollection: getRequests } = require('../models/guestRequest')
 const { getCollection: getUsers } = require('../models/user')
 const adminOnly = require('../middleware/adminOnly')
 
 module.exports = async (fastify) => {
   fastify.addHook('onRequest', fastify.authenticate)
 
+  /**
+   * POST /api/guests/request
+   * Authenticated user requests access.
+   * Sets approvalStatus to 'pending' on the user document.
+   */
   fastify.post('/request', {
     schema: {
       tags: ['Guests'],
@@ -21,48 +25,30 @@ module.exports = async (fastify) => {
       }
     }
   }, async (request, reply) => {
-    const requests = getRequests(fastify.mongo.db)
+    const users = getUsers(fastify.mongo.db)
 
-    const existing = await requests.findOne({ userId: request.user.id })
-    if (existing) {
-      return reply.code(200).send({
-        message: 'Request already submitted',
-        status: existing.status
-      })
+    const user = await users.findOne({ _id: request.user.id })
+
+    if (user.approvalStatus === 'pending') {
+      return reply.code(200).send({ message: 'Request already submitted' })
     }
 
-    await requests.insertOne({
-      userId: request.user.id,
-      telegramId: request.user.telegramId,
-      status: 'pending',
-      createdAt: new Date()
-    })
+    if (user.approvalStatus === 'approved') {
+      return reply.code(200).send({ message: 'Already approved' })
+    }
+
+    await users.updateOne(
+      { _id: request.user.id },
+      { $set: { approvalStatus: 'pending' } }
+    )
 
     return reply.code(201).send({ message: 'Request submitted, waiting for admin approval' })
   })
 
-  fastify.get('/request/me', {
-    schema: {
-      tags: ['Guests'],
-      summary: 'Check own request status',
-      security: [{ bearerAuth: [] }],
-      response: {
-        200: {
-          type: 'object',
-          required: ['status'],
-          properties: {
-            status: { type: 'string', enum: ['pending', 'approved', 'denied'] }
-          }
-        }
-      }
-    }
-  }, async (request, reply) => {
-    const requests = getRequests(fastify.mongo.db)
-    const req = await requests.findOne({ userId: request.user.id })
-    if (!req) return reply.code(404).send({ message: 'No request found' })
-    return { status: req.status }
-  })
-
+  /**
+   * GET /api/guests/requests  [admin only]
+   * Returns all users who have submitted a request (approvalStatus is not null).
+   */
   fastify.get('/requests', {
     onRequest: adminOnly,
     schema: {
@@ -74,45 +60,33 @@ module.exports = async (fastify) => {
           type: 'array',
           items: {
             type: 'object',
-            required: ['id', 'userId', 'status', 'createdAt'],
+            required: ['id', 'status', 'createdAt'],
             properties: {
               id: { type: 'string' },
-              userId: { type: 'string' },
-              status: { type: 'string' },
-              createdAt: { type: 'string' },
-              user: {
-                type: 'object',
-                properties: {
-                  firstName: { type: 'string' },
-                  lastName: { type: 'string' },
-                  username: { type: 'string' }
-                }
-              }
+              firstName: { type: 'string' },
+              lastName: { type: 'string' },
+              username: { type: 'string' },
+              status: { type: 'string', enum: ['pending', 'approved', 'denied'] },
+              createdAt: { type: 'string' }
             }
           }
         }
       }
     }
   }, async () => {
-    const requests = getRequests(fastify.mongo.db)
     const users = getUsers(fastify.mongo.db)
 
-    const all = await requests.find().sort({ createdAt: -1 }).toArray()
-
-    return Promise.all(all.map(async (req) => {
-      const user = await users.findOne({ _id: req.userId })
-      return {
-        ...req,
-        user: user ? {
-          firstName: user.firstName,
-          lastName: user.lastName,
-          username: user.username
-        } : null
-      }
-    }))
+    return users
+      .find({ approvalStatus: { $exists: true, $ne: null } })
+      .sort({ createdAt: -1 })
+      .toArray()
   })
 
-  fastify.patch('/requests/:requestId', {
+  /**
+   * PATCH /api/guests/requests/:userId  [admin only]
+   * Approve or deny a guest by their userId.
+   */
+  fastify.patch('/requests/:userId', {
     onRequest: adminOnly,
     schema: {
       tags: ['Guests'],
@@ -121,7 +95,7 @@ module.exports = async (fastify) => {
       params: {
         type: 'object',
         properties: {
-          requestId: { type: 'string' }
+          userId: { type: 'string' }
         }
       },
       body: {
@@ -143,36 +117,28 @@ module.exports = async (fastify) => {
     }
   }, async (request, reply) => {
     const { ObjectId } = fastify.mongo
-    const requests = getRequests(fastify.mongo.db)
     const users = getUsers(fastify.mongo.db)
 
-    let guestRequest
+    let user
     try {
-      guestRequest = await requests.findOne({ _id: new ObjectId(request.params.requestId) })
+      user = await users.findOne({ _id: new ObjectId(request.params.userId) })
     } catch {
-      return reply.code(400).send({ message: 'Invalid request ID' })
+      return reply.code(400).send({ message: 'Invalid user ID' })
     }
 
-    if (!guestRequest) return reply.code(404).send({ message: 'Request not found' })
-    if (guestRequest.status !== 'pending') {
-      return reply.code(400).send({ message: `Request already ${guestRequest.status}` })
+    if (!user) return reply.code(404).send({ message: 'User not found' })
+
+    if (user.approvalStatus !== 'pending') {
+      return reply.code(400).send({ message: `User already ${user.approvalStatus}` })
     }
 
     const newStatus = request.body.action === 'approve' ? 'approved' : 'denied'
 
-    await requests.updateOne(
-      { _id: new ObjectId(request.params.requestId) },
-      { $set: { status: newStatus, resolvedAt: new Date() } }
+    await users.updateOne(
+      { _id: new ObjectId(request.params.userId) },
+      { $set: { approvalStatus: newStatus, resolvedAt: new Date() } }
     )
 
-    // On approval — update the user's status so JWT refresh picks it up
-    if (newStatus === 'approved') {
-      await users.updateOne(
-        { _id: guestRequest.userId },
-        { $set: { status: 'approved' } }
-      )
-    }
-
-    return { message: `Request ${newStatus}` }
+    return { message: `User ${newStatus}` }
   })
 }

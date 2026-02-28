@@ -39,17 +39,8 @@ Fastify + MongoDB + Cloudinary backend for a Wedding Telegram Mini App.
 | Method | Route | Auth | Description |
 |---|---|---|---|
 | `POST` | `/api/guests/request` | Any authed user | Submit request to join |
-| `GET` | `/api/guests/request/me` | Any authed user | Check own request status |
 | `GET` | `/api/guests/requests` | Admin | List all requests |
 | `PATCH` | `/api/guests/requests/:id` | Admin | Approve or deny |
-
-### RSVP
-| Method | Route | Auth | Description |
-|---|---|---|---|
-| `POST` | `/api/rsvp` | Guest | Submit or update RSVP |
-| `GET` | `/api/rsvp/me` | Guest | Get own RSVP |
-| `GET` | `/api/rsvp/all` | Admin | All RSVPs with guest names |
-| `GET` | `/api/rsvp/stats` | Admin | Attendance summary |
 
 ### Gallery
 | Method | Route | Auth | Description |

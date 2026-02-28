@@ -1,14 +1,8 @@
 const crypto = require('crypto')
 const { getCollection } = require('../models/user')
 
-/**
- * Validates that initData genuinely came from Telegram.
- * Can be passed multiple bot tokens separated by commas.
- * https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
- */
 function validateTelegramData(initData, botToken) {
   const params = new URLSearchParams(initData)
-  const tokens = botToken.split(',')
   const hash = params.get('hash')
   if (!hash) return false
   params.delete('hash')
@@ -18,26 +12,17 @@ function validateTelegramData(initData, botToken) {
     .map(([k, v]) => `${k}=${v}`)
     .join('\n')
 
-  let isValid = false
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i]
-    const secretKey = crypto
-      .createHmac('sha256', 'WebAppData')
-      .update(token)
-      .digest()
-  
-    const expectedHash = crypto
-      .createHmac('sha256', secretKey)
-      .update(dataCheckString)
-      .digest('hex')
-    
-    if (expectedHash === hash) {
-      isValid = true
-      break
-    }
-  }
+  const secretKey = crypto
+    .createHmac('sha256', 'WebAppData')
+    .update(botToken)
+    .digest()
 
-  return isValid
+  const expectedHash = crypto
+    .createHmac('sha256', secretKey)
+    .update(dataCheckString)
+    .digest('hex')
+
+  return expectedHash === hash
 }
 
 module.exports = async (fastify) => {
@@ -55,8 +40,9 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
-          required: ['user'],
+          required: ['token', 'user'],
           properties: {
+            token: { type: 'string' },
             user: {
               type: 'object',
               required: ['firstName', 'role'],
@@ -101,7 +87,8 @@ module.exports = async (fastify) => {
           role
         },
         $setOnInsert: {
-          status: adminIds.includes(String(telegramUser.id)) ? 'approved' : 'pending',
+          // admins are pre-approved, guests start with null (not yet requested)
+          approvalStatus: adminIds.includes(String(telegramUser.id)) ? 'approved' : null,
           createdAt: new Date()
         }
       },
@@ -110,25 +97,19 @@ module.exports = async (fastify) => {
 
     const user = await users.findOne({ telegramId: String(telegramUser.id) })
 
+    // status is NOT included in JWT — always fetched fresh via /api/guests/request/me
     const token = fastify.jwt.sign(
-      { id: user._id, telegramId: user.telegramId, role: user.role, status: user.status },
+      { id: user._id, telegramId: user.telegramId, role: user.role },
       { expiresIn: '30d' }
     )
 
-    return reply
-      .setCookie('jwt', token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
-        path: '/',
-        maxAge: 3600 * 24 * 30
-      })
-      .send({
-        user: {
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role
-        }
-      })
+    return {
+      token,
+      user: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+      }
+    }
   })
 }

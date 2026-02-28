@@ -1,15 +1,11 @@
-const { getCollection } = require('../models/rsvp')
+const { getCollection: getUsers } = require('../models/user')
 
-// Only guests who confirmed attendance (status: attending) can upload media
+// Only approved guests who confirmed attendance can upload photos
 module.exports = async function confirmedGuest(request, reply) {
-  if (request.user.status !== 'approved') {
-    return reply.code(403).send({ message: 'Your request to join is pending admin approval' })
-  }
-  
-  const rsvps = getCollection(request.server.mongo.db)
-  const rsvp = await rsvps.findOne({ userId: request.user.id })
+  const users = getUsers(request.server.mongo.db)
+  const user = await users.findOne({ _id: request.user.id })
 
-  if (!rsvp || rsvp.status !== 'attending') {
-    return reply.code(403).send({ message: 'Only confirmed guests can see gallery' })
+  if (!user || user.approvalStatus !== 'approved') {
+    return reply.code(403).send({ message: 'Only approved guests can upload photos' })
   }
 }

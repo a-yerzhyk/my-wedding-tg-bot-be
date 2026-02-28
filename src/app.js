@@ -74,7 +74,6 @@ fastify.register(require('./plugins/multipart'))
 
 // Routes
 fastify.register(require('./routes/auth'),    { prefix: '/api/auth' })
-fastify.register(require('./routes/rsvp'),    { prefix: '/api/rsvp' })
 fastify.register(require('./routes/gallery'), { prefix: '/api/gallery' })
 fastify.register(require('./routes/guests'),  { prefix: '/api/guests' })
 
