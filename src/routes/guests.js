@@ -28,17 +28,13 @@ module.exports = async (fastify) => {
     const users = getUsers(fastify.mongo.db)
 
     const user = await users.findOne({ _id: request.user.id })
-
-    if (user.approvalStatus === 'pending') {
-      return reply.code(200).send({ message: 'Request already submitted' })
-    }
-
-    if (user.approvalStatus === 'approved') {
-      return reply.code(200).send({ message: 'Already approved' })
-    }
-
-    if (user.approvalStatus === 'denied') {
-      return reply.code(200).send({ message: 'Already denied' })
+    if (user.approvalStatus) {
+      const responses = {
+        pending: 'Request already submitted',
+        approved: 'Already approved',
+        denied: 'Already denied'
+      }
+      return reply.code(200).send({ message: responses[user.approvalStatus] })
     }
 
     await users.updateOne(
