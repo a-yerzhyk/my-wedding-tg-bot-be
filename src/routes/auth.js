@@ -30,11 +30,6 @@ function validateTelegramData(initData, botToken) {
 }
 
 module.exports = async (fastify) => {
-  /**
-   * POST /api/auth/telegram
-   * Called on TMA startup — validates Telegram identity, returns JWT.
-   * Vue sends: { initData: window.Telegram.WebApp.initData }
-   */
   fastify.post('/telegram', {
     schema: {
       tags: ['Auth'],
@@ -49,10 +44,12 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
+          required: ['token', 'user'],
           properties: {
             token: { type: 'string' },
             user: {
               type: 'object',
+              required: ['firstName', 'role'],
               properties: {
                 firstName: { type: 'string' },
                 lastName: { type: 'string' },
@@ -80,11 +77,9 @@ module.exports = async (fastify) => {
 
     const users = getCollection(fastify.mongo.db)
 
-    // Admins are identified by their Telegram ID set in .env
     const adminIds = process.env.ADMIN_TELEGRAM_IDS.split(',').map(id => id.trim())
     const role = adminIds.includes(String(telegramUser.id)) ? 'admin' : 'guest'
 
-    // Upsert — creates user on first visit, updates name if changed
     await users.updateOne(
       { telegramId: String(telegramUser.id) },
       {

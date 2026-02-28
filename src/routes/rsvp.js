@@ -5,10 +5,6 @@ const adminOnly = require('../middleware/adminOnly')
 module.exports = async (fastify) => {
   fastify.addHook('onRequest', fastify.authenticate)
 
-  /**
-   * POST /api/rsvp
-   * Guest submits or updates their RSVP.
-   */
   fastify.post('/', {
     schema: {
       tags: ['RSVP'],
@@ -18,14 +14,13 @@ module.exports = async (fastify) => {
         type: 'object',
         required: ['status'],
         properties: {
-          status: { type: 'string', enum: ['attending', 'not_attending', 'maybe'] },
-          guestCount: { type: 'number', minimum: 1, maximum: 10 },
-          dietaryNotes: { type: 'string' }
+          status: { type: 'string', enum: ['attending', 'not_attending', 'maybe'] }
         }
       },
       response: {
         200: {
           type: 'object',
+          required: ['message'],
           properties: {
             message: { type: 'string' }
           }
@@ -41,8 +36,6 @@ module.exports = async (fastify) => {
         $set: {
           userId: request.user.id,
           status: request.body.status,
-          guestCount: request.body.guestCount || 1,
-          dietaryNotes: request.body.dietaryNotes || '',
           updatedAt: new Date()
         },
         $setOnInsert: { createdAt: new Date() }
@@ -53,10 +46,6 @@ module.exports = async (fastify) => {
     return { message: 'RSVP saved' }
   })
 
-  /**
-   * GET /api/rsvp/me
-   * Guest views their own RSVP.
-   */
   fastify.get('/me', {
     schema: {
       tags: ['RSVP'],
@@ -65,11 +54,10 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
+          required: ['userId', 'status', 'createdAt'],
           properties: {
             userId: { type: 'string' },
             status: { type: 'string' },
-            guestCount: { type: 'number' },
-            dietaryNotes: { type: 'string' },
             createdAt: { type: 'string' },
             updatedAt: { type: 'string' }
           }
@@ -83,10 +71,6 @@ module.exports = async (fastify) => {
     return rsvp
   })
 
-  /**
-   * GET /api/rsvp/all  [admin only]
-   * Returns all RSVPs enriched with guest names.
-   */
   fastify.get('/all', {
     onRequest: adminOnly,
     schema: {
@@ -98,11 +82,10 @@ module.exports = async (fastify) => {
           type: 'array',
           items: {
             type: 'object',
+            required: ['userId', 'status', 'guest'],
             properties: {
               userId: { type: 'string' },
               status: { type: 'string' },
-              guestCount: { type: 'number' },
-              dietaryNotes: { type: 'string' },
               guest: { type: 'string' }
             }
           }
@@ -115,21 +98,15 @@ module.exports = async (fastify) => {
 
     const allRsvps = await rsvps.find().toArray()
 
-    const enriched = await Promise.all(allRsvps.map(async (rsvp) => {
+    return Promise.all(allRsvps.map(async (rsvp) => {
       const user = await users.findOne({ _id: rsvp.userId })
       return {
         ...rsvp,
         guest: user ? `${user.firstName} ${user.lastName}`.trim() : 'Unknown'
       }
     }))
-
-    return enriched
   })
 
-  /**
-   * GET /api/rsvp/stats  [admin only]
-   * Returns attendance summary counts.
-   */
   fastify.get('/stats', {
     onRequest: adminOnly,
     schema: {
@@ -139,11 +116,11 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
+          required: ['attending', 'notAttending', 'maybe'],
           properties: {
             attending: { type: 'number' },
             notAttending: { type: 'number' },
-            maybe: { type: 'number' },
-            totalGuests: { type: 'number' }
+            maybe: { type: 'number' }
           }
         }
       }
@@ -157,9 +134,6 @@ module.exports = async (fastify) => {
       rsvps.countDocuments({ status: 'maybe' })
     ])
 
-    const attendingRsvps = await rsvps.find({ status: 'attending' }).toArray()
-    const totalGuests = attendingRsvps.reduce((sum, r) => sum + (r.guestCount || 1), 0)
-
-    return { attending, notAttending, maybe, totalGuests }
+    return { attending, notAttending, maybe }
   })
 }

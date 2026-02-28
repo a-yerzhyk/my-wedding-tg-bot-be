@@ -11,11 +11,6 @@ const MAX_PHOTOS_PER_GALLERY = 50
 module.exports = async (fastify) => {
   fastify.addHook('onRequest', fastify.authenticate)
 
-  /**
-   * POST /api/gallery/upload
-   * Confirmed guest uploads a photo.
-   * Auto-creates a gallery on first upload.
-   */
   fastify.post('/upload', {
     onRequest: confirmedGuest,
     schema: {
@@ -25,6 +20,7 @@ module.exports = async (fastify) => {
       response: {
         201: {
           type: 'object',
+          required: ['url', 'thumbnailUrl'],
           properties: {
             url: { type: 'string' },
             thumbnailUrl: { type: 'string' }
@@ -118,11 +114,6 @@ module.exports = async (fastify) => {
     })
   })
 
-  /**
-   * GET /api/gallery
-   * Returns all guest galleries with 3 preview thumbnails each.
-   * Visible to guests.
-   */
   fastify.get('/', {
     schema: {
       tags: ['Gallery'],
@@ -133,6 +124,7 @@ module.exports = async (fastify) => {
           type: 'array',
           items: {
             type: 'object',
+            required: ['_id', 'guestName', 'photoCount', 'previews'],
             properties: {
               _id: { type: 'string' },
               guestName: { type: 'string' },
@@ -156,7 +148,7 @@ module.exports = async (fastify) => {
       .sort({ updatedAt: -1 })
       .toArray()
 
-    const enriched = await Promise.all(allGalleries.map(async (gallery) => {
+    return Promise.all(allGalleries.map(async (gallery) => {
       const previews = await media
         .find({ galleryId: gallery._id, type: 'photo' })
         .sort({ uploadedAt: -1 })
@@ -168,15 +160,8 @@ module.exports = async (fastify) => {
         previews: previews.map(p => p.thumbnailUrl)
       }
     }))
-
-    return enriched
   })
 
-  /**
-   * GET /api/gallery/:galleryId
-   * Returns a specific guest's full gallery with all photos.
-   * Visible to guests.
-   */
   fastify.get('/:galleryId', {
     schema: {
       tags: ['Gallery'],
@@ -191,6 +176,7 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
+          required: ['_id', 'guestName', 'photoCount', 'photos'],
           properties: {
             _id: { type: 'string' },
             guestName: { type: 'string' },
@@ -199,6 +185,7 @@ module.exports = async (fastify) => {
               type: 'array',
               items: {
                 type: 'object',
+                required: ['_id', 'url', 'thumbnailUrl', 'uploadedAt'],
                 properties: {
                   _id: { type: 'string' },
                   url: { type: 'string' },
@@ -236,10 +223,6 @@ module.exports = async (fastify) => {
     return { ...gallery, photos }
   })
 
-  /**
-   * DELETE /api/gallery/media/:mediaId
-   * Deletes a single photo. Allowed for: admin or the photo owner.
-   */
   fastify.delete('/media/:mediaId', {
     schema: {
       tags: ['Gallery'],
@@ -254,6 +237,7 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
+          required: ['message'],
           properties: {
             message: { type: 'string' }
           }

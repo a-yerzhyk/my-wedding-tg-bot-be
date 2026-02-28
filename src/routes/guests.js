@@ -5,11 +5,6 @@ const adminOnly = require('../middleware/adminOnly')
 module.exports = async (fastify) => {
   fastify.addHook('onRequest', fastify.authenticate)
 
-  /**
-   * POST /api/guests/request
-   * Authenticated user sends a request to become a guest.
-   * Can only be called once — subsequent calls return current status.
-   */
   fastify.post('/request', {
     schema: {
       tags: ['Guests'],
@@ -18,6 +13,7 @@ module.exports = async (fastify) => {
       response: {
         201: {
           type: 'object',
+          required: ['message'],
           properties: {
             message: { type: 'string' }
           }
@@ -45,10 +41,6 @@ module.exports = async (fastify) => {
     return reply.code(201).send({ message: 'Request submitted, waiting for admin approval' })
   })
 
-  /**
-   * GET /api/guests/request/me
-   * User checks the status of their own request.
-   */
   fastify.get('/request/me', {
     schema: {
       tags: ['Guests'],
@@ -57,6 +49,7 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
+          required: ['status'],
           properties: {
             status: { type: 'string', enum: ['pending', 'approved', 'denied'] }
           }
@@ -70,10 +63,6 @@ module.exports = async (fastify) => {
     return { status: req.status }
   })
 
-  /**
-   * GET /api/guests/requests  [admin only]
-   * Returns all guest requests enriched with Telegram user info.
-   */
   fastify.get('/requests', {
     onRequest: adminOnly,
     schema: {
@@ -85,6 +74,7 @@ module.exports = async (fastify) => {
           type: 'array',
           items: {
             type: 'object',
+            required: ['_id', 'userId', 'status', 'createdAt'],
             properties: {
               _id: { type: 'string' },
               userId: { type: 'string' },
@@ -122,11 +112,6 @@ module.exports = async (fastify) => {
     }))
   })
 
-  /**
-   * PATCH /api/guests/requests/:requestId  [admin only]
-   * Admin approves or denies a guest request.
-   * On approval, user's role in the users collection is updated to 'guest'.
-   */
   fastify.patch('/requests/:requestId', {
     onRequest: adminOnly,
     schema: {
@@ -149,6 +134,7 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
+          required: ['message'],
           properties: {
             message: { type: 'string' }
           }
