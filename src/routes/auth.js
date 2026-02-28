@@ -49,7 +49,8 @@ module.exports = async (fastify) => {
               properties: {
                 firstName: { type: 'string' },
                 lastName: { type: 'string' },
-                role: { type: 'string', enum: ['admin', 'guest'] }
+                role: { type: 'string', enum: ['admin', 'guest'] },
+                approvalStatus: { type: 'string', enum: ['pending', 'approved', 'denied'] }
               }
             }
           }
@@ -84,7 +85,8 @@ module.exports = async (fastify) => {
           firstName: telegramUser.first_name,
           lastName: telegramUser.last_name || '',
           username: telegramUser.username || '',
-          role
+          role,
+          approvalStatus: user.approvalStatus ?? null
         },
         $setOnInsert: {
           // admins are pre-approved, guests start with null (not yet requested)
