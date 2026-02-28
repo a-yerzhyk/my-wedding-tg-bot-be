@@ -7,6 +7,11 @@ function validateTelegramData(initData, botToken) {
   if (!hash) return false
   params.delete('hash')
 
+  const dataCheckString = Array.from(params.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join('\n')
+
   const tokens = botToken.split(',')
   let isValid = false
   for (let i = 0; i < tokens.length; i++) {
