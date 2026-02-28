@@ -29,7 +29,7 @@ module.exports = async (fastify) => {
     const users = getUsers(fastify.mongo.db)
 
     const user = await users.findOne({ _id: new ObjectId(request.user.id) })
-    
+
     if (!user) {
       return reply.code(404).send({ message: 'User not found' })
     }
@@ -66,13 +66,13 @@ module.exports = async (fastify) => {
           type: 'array',
           items: {
             type: 'object',
-            required: ['id', 'status', 'createdAt'],
+            required: ['id', 'approvalStatus', 'createdAt'],
             properties: {
               id: { type: 'string' },
               firstName: { type: 'string' },
               lastName: { type: 'string' },
               username: { type: 'string' },
-              status: { type: 'string', enum: ['pending', 'approved', 'denied'] },
+              approvalStatus: { type: 'string', enum: ['pending', 'approved', 'denied'] },
               createdAt: { type: 'string' }
             }
           }

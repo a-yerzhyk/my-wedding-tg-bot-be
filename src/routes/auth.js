@@ -107,7 +107,6 @@ module.exports = async (fastify) => {
 
     const user = await users.findOne({ telegramId: String(telegramUser.id) })
 
-    // status is NOT included in JWT — always fetched fresh via /api/guests/request/me
     const token = fastify.jwt.sign(
       { id: user._id, telegramId: user.telegramId, role: user.role },
       { expiresIn: '30d' }
