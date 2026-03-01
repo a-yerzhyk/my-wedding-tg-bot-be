@@ -49,10 +49,8 @@ module.exports = async (fastify) => {
       { $set: { approvalStatus: 'pending' } }
     )
 
-    process.env.ADMIN_TELEGRAM_IDS.split(',').forEach(async id => {
-      const text = `@${user.username} відправив запит на участь у святкуванні!`
-      await sendMessageToBot(id, text)
-    })
+    const text = `@${user.username} відправив запит на участь у святкуванні!`
+    await sendMessageToBot(process.env.ADMIN_TELEGRAM_IDS, text)
 
     return reply.code(201).send({ message: 'Request submitted, waiting for admin approval' })
   })
@@ -161,7 +159,8 @@ module.exports = async (fastify) => {
     )
 
     const textForUser = newStatus === 'approved'
-      ? 'Ваш запит на участь у святкуванні успішно підтверджений!🥳' : 'Запит на участь у святкуванні було відхилено.'
+      ? 'Ваш запит на участь у святкуванні успішно підтверджений!🥳'
+      : 'Запит на участь у святкуванні було відхилено.'
     await sendMessageToBot(user.telegramId, textForUser)
 
     return { message: `User ${newStatus}` }
