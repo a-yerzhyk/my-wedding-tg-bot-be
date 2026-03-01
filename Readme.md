@@ -19,7 +19,7 @@ Fastify + MongoDB + Cloudinary backend for a Wedding Telegram Mini App.
 | `PORT` | Server port (default: 4000) |
 | `MONGO_URL` | MongoDB connection string |
 | `JWT_SECRET` | Secret for signing JWTs |
-| `BOT_TOKEN` | Telegram bot token from @BotFather |
+| `BOT_TOKEN` | Telegram bot token from @BotFather. Multiple dev and prod tokens supported separated by comma because currently there is only prod version of BE. |
 | `ADMIN_TELEGRAM_IDS` | Comma-separated Telegram IDs of admins |
 | `STORAGE_PROVIDER` | `cloudinary` or `s3` |
 | `CLOUDINARY_CLOUD_NAME` | From Cloudinary dashboard |
