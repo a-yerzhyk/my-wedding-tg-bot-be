@@ -86,6 +86,14 @@ module.exports = async (fastify) => {
       .find({ approvalStatus: { $exists: true, $ne: null } })
       .sort({ createdAt: -1 })
       .toArray()
+      .map(user => ({
+        id: user._id.toString(),
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        approvalStatus: user.approvalStatus,
+        createdAt: user.createdAt.toISOString()
+      }))
   })
 
   /**

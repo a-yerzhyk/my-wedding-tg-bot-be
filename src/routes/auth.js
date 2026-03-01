@@ -108,8 +108,8 @@ module.exports = async (fastify) => {
     const user = await users.findOne({ telegramId: String(telegramUser.id) })
 
     const token = fastify.jwt.sign(
-      { id: user._id, telegramId: user.telegramId, role: user.role },
-      { expiresIn: '30d' }
+      { id: user._id.toString(), telegramId: user.telegramId, role: user.role },
+      { expiresIn: '10m' }
     )
 
     return reply
@@ -118,7 +118,7 @@ module.exports = async (fastify) => {
         secure: true,
         sameSite: 'none',
         path: '/',
-        maxAge: 3600 * 24 * 30
+        maxAge: 600
       })
       .send({
         user: {
