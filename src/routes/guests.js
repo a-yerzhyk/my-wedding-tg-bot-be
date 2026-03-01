@@ -83,7 +83,7 @@ module.exports = async (fastify) => {
     const users = getUsers(fastify.mongo.db)
 
     const result = await users
-      .find({ approvalStatus: { $exists: true, $ne: null } })
+      .find({ approvalStatus: { $exists: true, $ne: null }, role: 'guest' })
       .sort({ createdAt: -1 })
       .toArray()
 
