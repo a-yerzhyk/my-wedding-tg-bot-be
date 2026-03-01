@@ -1,5 +1,6 @@
 const { getCollection: getUsers } = require('../models/user')
 const adminOnly = require('../middleware/adminOnly')
+const { sendMessageToBot } = require('../utils/telegram')
 
 module.exports = async (fastify) => {
   fastify.addHook('onRequest', fastify.authenticate)
@@ -50,9 +51,7 @@ module.exports = async (fastify) => {
 
     process.env.ADMIN_TELEGRAM_IDS.split(',').forEach(async id => {
       const text = `@${user.username} відправив запит на участь у святкуванні!`
-      const prodBotToken = process.env.BOT_TOKEN.split(',')[0]
-      // Prod bot token used
-      await fetch(`https://api.telegram.org/bot${prodBotToken}/sendMessage?chat_id=${id}&text=${text}`)
+      await sendMessageToBot(id, text)
     })
 
     return reply.code(201).send({ message: 'Request submitted, waiting for admin approval' })
@@ -160,6 +159,10 @@ module.exports = async (fastify) => {
       { _id: new ObjectId(request.params.userId) },
       { $set: { approvalStatus: newStatus, resolvedAt: new Date() } }
     )
+
+    const textForUser = newStatus === 'approved'
+      ? 'Ваш запит на участь у святкуванні успішно підтверджений!🥳' : 'Запит на участь у святкуванні було відхилено.'
+    await sendMessageToBot(user.telegramId, textForUser)
 
     return { message: `User ${newStatus}` }
   })
