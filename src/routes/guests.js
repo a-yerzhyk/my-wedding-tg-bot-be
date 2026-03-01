@@ -48,6 +48,13 @@ module.exports = async (fastify) => {
       { $set: { approvalStatus: 'pending' } }
     )
 
+    process.env.ADMIN_TELEGRAM_IDS.split(',').forEach(async id => {
+      const text = `@${user.username} відправив запит на участь у святкуванні!`
+      const prodBotToken = process.env.BOT_TOKEN.split(',')[0]
+      // Prod bot token used
+      await fetch(`https://api.telegram.org/bot${prodBotToken}/sendMessage?chat_id=${id}&text=${text}`)
+    })
+
     return reply.code(201).send({ message: 'Request submitted, waiting for admin approval' })
   })
 
