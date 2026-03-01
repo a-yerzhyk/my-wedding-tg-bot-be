@@ -31,6 +31,7 @@ fastify.register(require('@fastify/cors'), {
     'http://dev-wedding.vn.ua:3000',
     'https://micheal-binate-raegan.ngrok-free.dev'
   ],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true
 })
 
