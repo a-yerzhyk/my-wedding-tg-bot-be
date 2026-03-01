@@ -162,6 +162,10 @@ module.exports = async (fastify) => {
       ? 'Ваш запит на участь у святкуванні успішно підтверджений!🥳'
       : 'Запит на участь у святкуванні було відхилено.'
     await sendMessageToBot(user.telegramId, textForUser)
+    const textForAdmins = newStatus === 'approved'
+      ? `Запит @${user.username} підтверджено!`
+      : `Запит @${user.username} відхилено.`
+    await sendMessageToBot(process.env.ADMIN_TELEGRAM_IDS, textForAdmins)
 
     return { message: `User ${newStatus}` }
   })
