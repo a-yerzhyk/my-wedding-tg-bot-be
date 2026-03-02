@@ -17,6 +17,17 @@ module.exports = async (fastify) => {
       tags: ['Gallery'],
       summary: 'Upload a photo (confirmed guests only)',
       security: [{ bearerAuth: [] }],
+      consumes: ['multipart/form-data'],  // ← tell Swagger it's a file upload
+      body: {
+        type: 'object',
+        required: ['file'],
+        properties: {
+          file: {
+            type: 'string',
+            format: 'binary'  // ← file upload field
+          }
+        }
+      },
       response: {
         201: {
           type: 'object',
@@ -158,6 +169,7 @@ module.exports = async (fastify) => {
 
       return {
         ...gallery,
+        id: gallery._id.toString(),
         previews: previews.map(p => p.thumbnailUrl)
       }
     }))
