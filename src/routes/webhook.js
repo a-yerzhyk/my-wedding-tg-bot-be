@@ -32,7 +32,7 @@ module.exports = async (fastify) => {
     if (!update?.message) return
 
     const message = update.message
-    const chatId = message.chat.id
+    const chatId = message.chat.id.toString()
     const telegramId = String(message.from.id)
 
     const users = getUsers(fastify.mongo.db)
