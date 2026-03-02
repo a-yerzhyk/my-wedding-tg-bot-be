@@ -77,5 +77,6 @@ fastify.register(require('./plugins/multipart'))
 fastify.register(require('./routes/auth'),    { prefix: '/api/auth' })
 fastify.register(require('./routes/gallery'), { prefix: '/api/gallery' })
 fastify.register(require('./routes/guests'),  { prefix: '/api/guests' })
+fastify.register(require('./routes/webhook'), { prefix: '/api/webhook' })
 
 module.exports = fastify
