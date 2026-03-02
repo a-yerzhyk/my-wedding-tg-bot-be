@@ -17,14 +17,14 @@ module.exports = async (fastify) => {
       tags: ['Gallery'],
       summary: 'Upload a photo (confirmed guests only)',
       security: [{ bearerAuth: [] }],
-      consumes: ['multipart/form-data'],  // ← tell Swagger it's a file upload
+      consumes: ['multipart/form-data'],
       body: {
         type: 'object',
         required: ['file'],
         properties: {
           file: {
             type: 'string',
-            format: 'binary'  // ← file upload field
+            format: 'binary'
           }
         }
       },
@@ -38,7 +38,8 @@ module.exports = async (fastify) => {
           }
         }
       }
-    }
+    },
+    validatorCompiler: () => () => true
   }, async (request, reply) => {
     const { ObjectId } = fastify.mongo
     const data = await request.file()
