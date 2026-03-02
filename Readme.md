@@ -19,7 +19,7 @@ Fastify + MongoDB + Cloudinary backend for a Wedding Telegram Mini App.
 | `PORT` | Server port (default: 4000) |
 | `MONGO_URL` | MongoDB connection string |
 | `JWT_SECRET` | Secret for signing JWTs |
-| `BOT_TOKEN` | Telegram bot token from @BotFather. Multiple dev and prod tokens supported separated by comma because currently there is only prod version of BE. |
+| `BOT_TOKEN` | Telegram bot token from @BotFather. Bot tokens separated by comma because currently there is only prod version of BE. |
 | `ADMIN_TELEGRAM_IDS` | Comma-separated Telegram IDs of admins |
 | `STORAGE_PROVIDER` | `cloudinary` or `s3` |
 | `CLOUDINARY_CLOUD_NAME` | From Cloudinary dashboard |
@@ -45,11 +45,14 @@ Fastify + MongoDB + Cloudinary backend for a Wedding Telegram Mini App.
 ### Gallery
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| `POST` | `/api/gallery/upload` | Confirmed guest | Upload photo |
-| `GET` | `/api/gallery` | Any guest | List all galleries with previews |
-| `GET` | `/api/gallery/:galleryId` | Any guest | Open a specific gallery |
+| `GET` | `/api/gallery` | Approved guest | List all galleries with previews |
+| `GET` | `/api/gallery/:galleryId` | Approved guest | Open a specific gallery |
 | `DELETE` | `/api/gallery/media/:mediaId` | Admin or owner | Delete a photo |
 
+### Webhook
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/` | Telegram sends all bot updates here (ex. sending photos to the bot) |
 ---
 
 ## Switching Storage Providers
