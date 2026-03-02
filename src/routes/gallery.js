@@ -61,7 +61,7 @@ module.exports = async (fastify) => {
         .toArray()
 
       const user = await users.findOne({ _id: gallery.userId })
-
+      console.log('RQUEST', request)
       return {
         ...gallery,
         id: gallery._id.toString(),
