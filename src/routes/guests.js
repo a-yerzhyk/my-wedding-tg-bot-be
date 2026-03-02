@@ -77,6 +77,7 @@ module.exports = async (fastify) => {
               lastName: { type: 'string' },
               username: { type: 'string' },
               approvalStatus: { type: 'string', enum: ['pending', 'approved', 'denied'] },
+              avatarUrl: { type: 'string' },
               createdAt: { type: 'string' }
             }
           }
@@ -97,6 +98,7 @@ module.exports = async (fastify) => {
       lastName: user.lastName,
       username: user.username,
       approvalStatus: user.approvalStatus,
+      avatarUrl: user.avatarUrl,
       createdAt: user.createdAt.toISOString()
     }))
   })

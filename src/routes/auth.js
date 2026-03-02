@@ -59,6 +59,7 @@ module.exports = async (fastify) => {
                 firstName: { type: 'string' },
                 lastName: { type: 'string' },
                 role: { type: 'string', enum: ['admin', 'guest'] },
+                avatarUrl: { type: 'string' },
                 approvalStatus: { type: 'string', enum: ['pending', 'approved', 'denied'] }
               }
             }
@@ -94,6 +95,7 @@ module.exports = async (fastify) => {
           firstName: telegramUser.first_name,
           lastName: telegramUser.last_name || '',
           username: telegramUser.username || '',
+          avatarUrl: telegramUser.photo_url || '',
           role
         },
         $setOnInsert: {
@@ -124,6 +126,7 @@ module.exports = async (fastify) => {
         user: {
           firstName: user.firstName,
           lastName: user.lastName,
+          avatarUrl: user.avatarUrl,
           role: user.role,
           approvalStatus: user.approvalStatus ?? null
         }

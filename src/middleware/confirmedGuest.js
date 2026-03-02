@@ -7,6 +7,6 @@ module.exports = async function confirmedGuest(request, reply) {
   const user = await users.findOne({ _id: new ObjectId(request.user.id) })
 
   if (!user || user.approvalStatus !== 'approved') {
-    return reply.code(403).send({ message: 'Only approved guests can upload photos' })
+    return reply.code(403).send({ message: 'Only approved guests' })
   }
 }

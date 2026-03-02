@@ -128,7 +128,6 @@ async function savePhoto(fastify, buffer, mimetype, user, chatId) {
   if (!gallery) {
     const result = await galleries.insertOne({
       userId: new ObjectId(user._id),
-      guestName: `${user.firstName} ${user.lastName}`.trim(),
       coverPhotoUrl: uploadResult.thumbnailUrl,
       photoCount: 0,
       createdAt: now,

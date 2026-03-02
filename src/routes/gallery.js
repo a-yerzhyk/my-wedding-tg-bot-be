@@ -1,9 +1,11 @@
+const confirmedGuest = require('../middleware/confirmedGuest')
 const { getCollection: getGalleries } = require('../models/gallery')
 const { getCollection: getMedia } = require('../models/media')
+const { getCollection: getUsers } = require('../models/user')
 const storage = require('../services/storage')
 
 module.exports = async (fastify) => {
-  fastify.addHook('onRequest', fastify.authenticate)
+  fastify.addHook('onRequest', confirmedGuest)
 
   fastify.get('/', {
     schema: {
@@ -15,15 +17,26 @@ module.exports = async (fastify) => {
           type: 'array',
           items: {
             type: 'object',
-            required: ['id', 'guestName', 'photoCount', 'previews'],
+            required: ['id', 'photoCount', 'previews', 'user'],
             properties: {
               id: { type: 'string' },
-              guestName: { type: 'string' },
               coverPhotoUrl: { type: 'string' },
               photoCount: { type: 'number' },
               previews: {
                 type: 'array',
                 items: { type: 'string' }
+              },
+              isOwner: { type: 'boolean' },
+              user: {
+                type: 'object',
+                required: ['firstName', 'role'],
+                properties: {
+                  firstName: { type: 'string' },
+                  lastName: { type: 'string' },
+                  username: { type: 'string' },
+                  role: { type: 'string', enum: ['admin', 'guest'] },
+                  avatarUrl: { type: 'string' }
+                }
               }
             }
           }
@@ -33,6 +46,7 @@ module.exports = async (fastify) => {
   }, async () => {
     const galleries = getGalleries(fastify.mongo.db)
     const media = getMedia(fastify.mongo.db)
+    const users = getUsers(fastify.mongo.db)
 
     const allGalleries = await galleries
       .find()
@@ -46,10 +60,20 @@ module.exports = async (fastify) => {
         .limit(3)
         .toArray()
 
+      const user = await users.findOne({ _id: gallery.userId })
+
       return {
         ...gallery,
         id: gallery._id.toString(),
-        previews: previews.map(p => p.thumbnailUrl)
+        previews: previews.map(p => p.thumbnailUrl),
+        isOwner: String(gallery.userId) === String(request.user.id),
+        user: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          username: user.username,
+          role: user.role,
+          avatarUrl: user.avatarUrl
+        }
       }
     }))
   })
@@ -68,10 +92,9 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
-          required: ['id', 'guestName', 'photoCount', 'photos'],
+          required: ['id', 'photoCount', 'photos'],
           properties: {
             id: { type: 'string' },
-            guestName: { type: 'string' },
             photoCount: { type: 'number' },
             photos: {
               type: 'array',
@@ -85,6 +108,17 @@ module.exports = async (fastify) => {
                   uploadedAt: { type: 'string' }
                 }
               }
+            },
+            user: {
+              type: 'object',
+              required: ['firstName', 'role'],
+              properties: {
+                firstName: { type: 'string' },
+                lastName: { type: 'string' },
+                username: { type: 'string' },
+                role: { type: 'string', enum: ['admin', 'guest'] },
+                avatarUrl: { type: 'string' }
+              }
             }
           }
         }
@@ -94,6 +128,7 @@ module.exports = async (fastify) => {
     const { ObjectId } = fastify.mongo
     const galleries = getGalleries(fastify.mongo.db)
     const media = getMedia(fastify.mongo.db)
+    const users = getUsers(fastify.mongo.db)
 
     let gallery
     try {
@@ -112,7 +147,19 @@ module.exports = async (fastify) => {
       .sort({ uploadedAt: -1 })
       .toArray()
 
-    return { ...gallery, photos }
+    const user = await users.findOne({ _id: gallery.userId })
+
+    return {
+      ...gallery,
+      photos,
+      user: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        role: user.role,
+        avatarUrl: user.avatarUrl
+      }
+    }
   })
 
   fastify.delete('/media/:mediaId', {
