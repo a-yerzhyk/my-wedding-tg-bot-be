@@ -44,7 +44,7 @@ module.exports = async (fastify) => {
         }
       }
     }
-  }, async () => {
+  }, async (request) => {
     const galleries = getGalleries(fastify.mongo.db)
     const media = getMedia(fastify.mongo.db)
     const users = getUsers(fastify.mongo.db)
