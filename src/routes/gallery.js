@@ -5,9 +5,10 @@ const { getCollection: getUsers } = require('../models/user')
 const storage = require('../services/storage')
 
 module.exports = async (fastify) => {
-  fastify.addHook('onRequest', confirmedGuest)
+  fastify.addHook('onRequest', fastify.authenticate)
 
   fastify.get('/', {
+    onRequest: confirmedGuest,
     schema: {
       tags: ['Gallery'],
       summary: 'List all guest galleries with previews',
@@ -61,7 +62,7 @@ module.exports = async (fastify) => {
         .toArray()
 
       const user = await users.findOne({ _id: gallery.userId })
-      console.log('RQUEST', request)
+
       return {
         ...gallery,
         id: gallery._id.toString(),
@@ -79,6 +80,7 @@ module.exports = async (fastify) => {
   })
 
   fastify.get('/:galleryId', {
+    onRequest: confirmedGuest,
     schema: {
       tags: ['Gallery'],
       summary: 'Get a specific guest gallery with all photos',
@@ -163,6 +165,7 @@ module.exports = async (fastify) => {
   })
 
   fastify.delete('/media/:mediaId', {
+    onRequest: confirmedGuest,
     schema: {
       tags: ['Gallery'],
       summary: 'Delete a photo (admin or owner)',

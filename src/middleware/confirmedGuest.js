@@ -4,7 +4,6 @@ const { getCollection: getUsers } = require('../models/user')
 module.exports = async function confirmedGuest(request, reply) {
   const { ObjectId } = request.server.mongo
   const users = getUsers(request.server.mongo.db)
-  console.log('REQUEST1', request)
   const user = await users.findOne({ _id: new ObjectId(request.user.id) })
 
   if (!user || user.approvalStatus !== 'approved') {
