@@ -77,7 +77,7 @@ Admins are identified by `ADMIN_TELEGRAM_IDS` and are always approved on first l
 
 ## Swagger UI
 
-Available at `/docs` in production. Raw OpenAPI spec at `/docs/json`.
+Available at `/api/docs` in production. Raw OpenAPI spec at `/api/docs/json`.
 
 ---
 
