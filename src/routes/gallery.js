@@ -95,9 +95,10 @@ module.exports = async (fastify) => {
       response: {
         200: {
           type: 'object',
-          required: ['id', 'photoCount', 'photos'],
+          required: ['id', 'isOwner', 'photoCount', 'photos'],
           properties: {
             id: { type: 'string' },
+            isOwner: { type: 'boolean' },
             photoCount: { type: 'number' },
             photos: {
               type: 'array',
@@ -159,11 +160,11 @@ module.exports = async (fastify) => {
     return {
       ...gallery,
       id: gallery._id.toString(),
+      isOwner: String(gallery.userId) === String(request.user.id),
       photos: photos.map(p => ({
         ...p,
         id: p._id.toString()
       })),
-      isOwner: String(gallery.userId) === String(request.user.id),
       user: {
         firstName: user.firstName,
         lastName: user.lastName,
