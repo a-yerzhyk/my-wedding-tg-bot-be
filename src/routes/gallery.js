@@ -50,7 +50,7 @@ module.exports = async (fastify) => {
     const users = getUsers(fastify.mongo.db)
 
     const allGalleries = await galleries
-      .find()
+      .find({ deletedAt: { $exists: false } })
       .sort({ updatedAt: -1 })
       .toArray()
 
@@ -144,7 +144,11 @@ module.exports = async (fastify) => {
     }
 
     const photos = await media
-      .find({ galleryId: gallery._id, type: 'photo' })
+      .find({ 
+        galleryId: gallery._id, 
+        type: 'photo',
+        deletedAt: { $exists: false }
+      })
       // When adding video: remove the type filter to return both photos and videos
       .sort({ uploadedAt: -1 })
       .toArray()
@@ -164,32 +168,28 @@ module.exports = async (fastify) => {
     }
   })
 
+  // Soft delete — guest marks photo as deleted
   fastify.delete('/media/:mediaId', {
     onRequest: confirmedGuest,
     schema: {
       tags: ['Gallery'],
-      summary: 'Delete a photo (admin or owner)',
+      summary: 'Soft delete a photo (owner only)',
       security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
-        properties: {
-          mediaId: { type: 'string' }
-        }
+        properties: { mediaId: { type: 'string' } }
       },
       response: {
         200: {
           type: 'object',
           required: ['message'],
-          properties: {
-            message: { type: 'string' }
-          }
+          properties: { message: { type: 'string' } }
         }
       }
     }
   }, async (request, reply) => {
     const { ObjectId } = fastify.mongo
     const media = getMedia(fastify.mongo.db)
-    const galleries = getGalleries(fastify.mongo.db)
 
     let item
     try {
@@ -201,25 +201,159 @@ module.exports = async (fastify) => {
     if (!item) return reply.code(404).send({ message: 'Photo not found' })
 
     const isOwner = String(item.userId) === String(request.user.id)
-    const isAdmin = request.user.role === 'admin'
-    if (!isOwner && !isAdmin) {
+    if (!isOwner) {
       return reply.code(403).send({ message: 'Not allowed' })
     }
 
-    // Delete from cloud storage
-    await storage.delete(item.cloudId, { type: item.type })
+    await media.updateOne(
+      { _id: new ObjectId(request.params.mediaId) },
+      { $set: { deletedAt: new Date() } }
+    )
 
-    await media.deleteOne({ _id: new ObjectId(request.params.mediaId) })
-
-    // Keep gallery count accurate
+    // Decrement gallery count
     await galleries.updateOne(
       { _id: item.galleryId },
-      {
-        $inc: { photoCount: -1 },
-        $set: { updatedAt: new Date() }
-      }
+      { $inc: { photoCount: -1 }, $set: { updatedAt: new Date() } }
     )
 
     return { message: 'Photo deleted' }
+  })
+
+  // Hard delete — admin permanently removes photo
+  fastify.delete('/media/:mediaId/hard', {
+    onRequest: adminOnly,
+    schema: {
+      tags: ['Gallery'],
+      summary: 'Hard delete a photo (admin only)',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: { mediaId: { type: 'string' } }
+      },
+      response: {
+        200: {
+          type: 'object',
+          required: ['message'],
+          properties: { message: { type: 'string' } }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const { ObjectId } = fastify.mongo
+    const media = getMedia(fastify.mongo.db)
+
+    let item
+    try {
+      item = await media.findOne({ _id: new ObjectId(request.params.mediaId) })
+    } catch {
+      return reply.code(400).send({ message: 'Invalid media ID' })
+    }
+
+    if (!item) return reply.code(404).send({ message: 'Photo not found' })
+
+    await storage.delete(item.cloudId, { type: item.type })
+    await media.deleteOne({ _id: new ObjectId(request.params.mediaId) })
+
+    await galleries.updateOne(
+      { _id: item.galleryId },
+      { $inc: { photoCount: -1 }, $set: { updatedAt: new Date() } }
+    )
+
+    return { message: 'Photo permanently deleted' }
+  })
+
+  // Soft delete gallery — guest marks gallery as deleted
+  fastify.delete('/:galleryId', {
+    onRequest: confirmedGuest,
+    schema: {
+      tags: ['Gallery'],
+      summary: 'Soft delete a gallery (owner only)',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: { galleryId: { type: 'string' } }
+      },
+      response: {
+        200: {
+          type: 'object',
+          required: ['message'],
+          properties: { message: { type: 'string' } }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const { ObjectId } = fastify.mongo
+
+    let gallery
+    try {
+      gallery = await galleries.findOne({ _id: new ObjectId(request.params.galleryId) })
+    } catch {
+      return reply.code(400).send({ message: 'Invalid gallery ID' })
+    }
+
+    if (!gallery) return reply.code(404).send({ message: 'Gallery not found' })
+
+    const isOwner = String(gallery.userId) === String(request.user.id)
+    if (!isOwner) {
+      return reply.code(403).send({ message: 'Not allowed' })
+    }
+
+    // Soft delete gallery and all its photos
+    await galleries.updateOne(
+      { _id: new ObjectId(request.params.galleryId) },
+      { $set: { deletedAt: new Date() } }
+    )
+
+    await media.updateMany(
+      { galleryId: new ObjectId(request.params.galleryId) },
+      { $set: { deletedAt: new Date() } }
+    )
+
+    return { message: 'Gallery deleted' }
+  })
+
+  // Hard delete gallery — admin permanently removes gallery and all photos
+  fastify.delete('/:galleryId/hard', {
+    onRequest: adminOnly,
+    schema: {
+      tags: ['Gallery'],
+      summary: 'Hard delete a gallery (admin only)',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: { galleryId: { type: 'string' } }
+      },
+      response: {
+        200: {
+          type: 'object',
+          required: ['message'],
+          properties: { message: { type: 'string' } }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const { ObjectId } = fastify.mongo
+
+    let gallery
+    try {
+      gallery = await galleries.findOne({ _id: new ObjectId(request.params.galleryId) })
+    } catch {
+      return reply.code(400).send({ message: 'Invalid gallery ID' })
+    }
+
+    if (!gallery) return reply.code(404).send({ message: 'Gallery not found' })
+
+    // Delete all photos from storage
+    const allMedia = await media
+      .find({ galleryId: new ObjectId(request.params.galleryId) })
+      .toArray()
+
+    await Promise.all(allMedia.map(item => storage.delete(item.cloudId, { type: item.type })))
+
+    // Delete from DB
+    await media.deleteMany({ galleryId: new ObjectId(request.params.galleryId) })
+    await galleries.deleteOne({ _id: new ObjectId(request.params.galleryId) })
+
+    return { message: 'Gallery permanently deleted' }
   })
 }
