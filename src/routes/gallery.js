@@ -1,4 +1,5 @@
 const confirmedGuest = require('../middleware/confirmedGuest')
+const adminOnly = require('../middleware/adminOnly')
 const { getCollection: getGalleries } = require('../models/gallery')
 const { getCollection: getMedia } = require('../models/media')
 const { getCollection: getUsers } = require('../models/user')
