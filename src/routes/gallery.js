@@ -195,6 +195,7 @@ module.exports = async (fastify) => {
   }, async (request, reply) => {
     const { ObjectId } = fastify.mongo
     const media = getMedia(fastify.mongo.db)
+    const galleries = getGalleries(fastify.mongo.db)
 
     let item
     try {
@@ -246,6 +247,7 @@ module.exports = async (fastify) => {
   }, async (request, reply) => {
     const { ObjectId } = fastify.mongo
     const media = getMedia(fastify.mongo.db)
+    const galleries = getGalleries(fastify.mongo.db)
 
     let item
     try {
@@ -288,6 +290,8 @@ module.exports = async (fastify) => {
     }
   }, async (request, reply) => {
     const { ObjectId } = fastify.mongo
+    const media = getMedia(fastify.mongo.db)
+    const galleries = getGalleries(fastify.mongo.db)
 
     let gallery
     try {
@@ -338,6 +342,8 @@ module.exports = async (fastify) => {
     }
   }, async (request, reply) => {
     const { ObjectId } = fastify.mongo
+    const media = getMedia(fastify.mongo.db)
+    const galleries = getGalleries(fastify.mongo.db)
 
     let gallery
     try {
