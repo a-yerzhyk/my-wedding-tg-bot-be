@@ -163,6 +163,7 @@ module.exports = async (fastify) => {
         ...p,
         id: p._id.toString()
       })),
+      isOwner: String(gallery.userId) === String(request.user.id),
       user: {
         firstName: user.firstName,
         lastName: user.lastName,
