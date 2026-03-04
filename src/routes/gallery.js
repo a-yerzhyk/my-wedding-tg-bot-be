@@ -158,7 +158,11 @@ module.exports = async (fastify) => {
 
     return {
       ...gallery,
-      photos,
+      id: gallery._id.toString(),
+      photos: photos.map(p => ({
+        ...p,
+        id: p._id.toString()
+      })),
       user: {
         firstName: user.firstName,
         lastName: user.lastName,
