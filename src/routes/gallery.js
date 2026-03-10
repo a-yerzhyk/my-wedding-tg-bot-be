@@ -54,9 +54,9 @@ module.exports = async (fastify) => {
       .find({ deletedAt: { $exists: false } })
       .sort({ updatedAt: -1 })
       .toArray()
-      .filter(gallery => gallery.photoCount > 0)
+      
 
-    return Promise.all(allGalleries.map(async (gallery) => {
+    return Promise.all(allGalleries.filter(gallery => gallery.photoCount > 0).map(async (gallery) => {
       const previews = await media
         .find({ galleryId: gallery._id, type: 'photo' })
         .sort({ uploadedAt: -1 })
