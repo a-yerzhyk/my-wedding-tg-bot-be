@@ -56,6 +56,11 @@ module.exports = async (fastify) => {
       return
     }
 
+    if (message.text?.startsWith('/message_for_guests')) {
+      await handleMessageForGuests(fastify, message, user, telegramId)
+      return
+    }
+
     let result = null
 
     if (message.photo) {
@@ -98,6 +103,24 @@ module.exports = async (fastify) => {
       }
     }
   })
+}
+
+async function handleMessageForGuests(fastify, message, user, senderTelegramId) {
+  if (user.role !== 'admin') return
+  const text = message.text.replace('/message_for_guests', '').trim()
+  if (!text) return
+
+  const users = getUsers(fastify.mongo.db)
+  const guests = await users
+    .find({ approvalStatus: 'denied', role: 'guest', telegramId: { $ne: senderTelegramId } })
+    .project({ telegramId: 1 })
+    .toArray()
+
+  for (const guest of guests) {
+    await sendMessageToBot(guest.telegramId, text)
+  }
+
+  await sendMessageToBot(user.telegramId, `✅ Повідомлення надіслано ${guests.length} гостям.`)
 }
 
 async function handlePhoto(fastify, message, user, chatId) {
