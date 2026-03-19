@@ -56,7 +56,7 @@ module.exports = async (fastify) => {
       return
     }
 
-    if (message.text?.startsWith('/message_for_guests')) {
+    if (message.text?.startsWith('/m ')) {
       await handleMessageForGuests(fastify, message, user, telegramId)
       return
     }
@@ -107,7 +107,7 @@ module.exports = async (fastify) => {
 
 async function handleMessageForGuests(fastify, message, user, senderTelegramId) {
   if (user.role !== 'admin') return
-  const text = message.text.replace('/message_for_guests', '').trim()
+  const text = message.text.replace('/m ', '').trim()
   if (!text) return
 
   const users = getUsers(fastify.mongo.db)
