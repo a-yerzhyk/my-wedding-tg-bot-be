@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.js$|server\")",
+      "Bash(grep -E \"\\\\.js$|\\\\.json$|\\\\.yml$|\\\\.md$\")"
+    ]
+  }
+}
