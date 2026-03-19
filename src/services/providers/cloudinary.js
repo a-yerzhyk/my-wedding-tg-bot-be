@@ -8,9 +8,7 @@ cloudinary.config({
 
 module.exports = {
   async upload(buffer, { folder, mimetype }) {
-    // When adding video support, resource_type will be determined by mimetype:
-    // const resourceType = mimetype.startsWith('video') ? 'video' : 'image'
-    const resourceType = 'image'
+    const resourceType = mimetype.startsWith('video/') ? 'video' : 'image'
 
     const result = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_stream(
@@ -23,11 +21,12 @@ module.exports = {
     })
 
     const thumbnailUrl = cloudinary.url(result.public_id, {
+      resource_type: resourceType,
       width: 400,
       height: 400,
       crop: 'fill',
       quality: 'auto',
-      format: 'webp'
+      format: resourceType === 'video' ? 'jpg' : 'webp'
     })
 
     return {
@@ -35,24 +34,24 @@ module.exports = {
       url: result.secure_url,
       thumbnailUrl,
       width: result.width,
-      height: result.height
+      height: result.height,
+      duration: result.duration ?? null
     }
   },
 
   async delete(cloudId, { type = 'photo' } = {}) {
-    // When adding video support:
-    // const resourceType = type === 'video' ? 'video' : 'image'
-    const resourceType = 'image'
+    const resourceType = type === 'video' ? 'video' : 'image'
     await cloudinary.uploader.destroy(cloudId, { resource_type: resourceType })
   },
 
-  getThumbnail(cloudId, { width = 400, height = 400 } = {}) {
+  getThumbnail(cloudId, { width = 400, height = 400, type = 'photo' } = {}) {
     return cloudinary.url(cloudId, {
+      resource_type: type === 'video' ? 'video' : 'image',
       width,
       height,
       crop: 'fill',
       quality: 'auto',
-      format: 'webp'
+      format: type === 'video' ? 'jpg' : 'webp'
     })
   }
 }

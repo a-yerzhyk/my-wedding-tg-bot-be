@@ -4,9 +4,7 @@ const multipart = require('@fastify/multipart')
 module.exports = fp(async (fastify) => {
   fastify.register(multipart, {
     limits: {
-      fileSize: 10 * 1024 * 1024, // 10MB max per photo
-      // When adding video support, increase this limit:
-      // fileSize: 200 * 1024 * 1024, // 200MB for video
+      fileSize: 100 * 1024 * 1024, // 100MB max (per-type enforcement in route handler)
       files: 1
     }
   })
