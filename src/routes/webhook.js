@@ -112,7 +112,7 @@ async function handleMessageForGuests(fastify, message, user, senderTelegramId) 
 
   const users = getUsers(fastify.mongo.db)
   const guests = await users
-    .find({ approvalStatus: 'denied', role: 'guest', telegramId: { $ne: senderTelegramId } })
+    .find({ approvalStatus: 'approved', role: 'guest', telegramId: { $ne: senderTelegramId } })
     .project({ telegramId: 1 })
     .toArray()
 
