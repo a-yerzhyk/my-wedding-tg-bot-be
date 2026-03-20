@@ -61,7 +61,20 @@ module.exports = async (fastify) => {
       .sort({ updatedAt: -1 })
       .toArray()
 
-    return Promise.all(allGalleries.filter(gallery => gallery.photoCount > 0 || gallery.videoCount > 0).map(async (gallery) => {
+    const isAdmin = request.user.role === 'admin'
+    let galleriesWithSoftDeleted = new Set()
+    if (isAdmin) {
+      const softDeleted = await media.aggregate([
+        { $match: { deletedAt: { $exists: true } } },
+        { $group: { _id: '$galleryId' } }
+      ]).toArray()
+      galleriesWithSoftDeleted = new Set(softDeleted.map(r => r._id.toString()))
+    }
+
+    return Promise.all(allGalleries.filter(gallery =>
+      gallery.photoCount > 0 || gallery.videoCount > 0 ||
+      galleriesWithSoftDeleted.has(gallery._id.toString())
+    ).map(async (gallery) => {
       const previews = await media
         .find({ galleryId: gallery._id, type: 'photo', deletedAt: { $exists: false } })
         .sort({ uploadedAt: -1 })
@@ -393,11 +406,14 @@ module.exports = async (fastify) => {
     await storage.delete(item.cloudId, { type: item.type })
     await media.deleteOne({ _id: new ObjectId(request.params.mediaId) })
 
-    const countField = item.type === 'video' ? 'videoCount' : 'photoCount'
-    await galleries.updateOne(
-      { _id: item.galleryId },
-      { $inc: { [countField]: -1 }, $set: { updatedAt: new Date() } }
-    )
+    // Only decrement if not already soft-deleted (soft delete already decremented)
+    if (!item.deletedAt) {
+      const countField = item.type === 'video' ? 'videoCount' : 'photoCount'
+      await galleries.updateOne(
+        { _id: item.galleryId },
+        { $inc: { [countField]: -1 }, $set: { updatedAt: new Date() } }
+      )
+    }
 
     return { message: 'Media permanently deleted' }
   })
