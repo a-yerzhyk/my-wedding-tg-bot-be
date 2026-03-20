@@ -233,58 +233,75 @@ module.exports = async (fastify) => {
     const galleries = getGalleries(fastify.mongo.db)
     const media = getMedia(fastify.mongo.db)
 
-    const file = await request.file()
-    if (!file) {
-      return reply.code(400).send({ message: 'No file uploaded' })
+    // Collect and validate all files before any uploads
+    const files = []
+    for await (const file of request.files()) {
+      const { mimetype } = file
+      let type
+      if (mimetype.startsWith('video/')) {
+        type = 'video'
+      } else if (mimetype.startsWith('image/')) {
+        type = 'photo'
+      } else {
+        return reply.code(400).send({ message: `Unsupported file type: ${mimetype}` })
+      }
+
+      const buffer = await file.toBuffer()
+
+      if (type === 'photo' && buffer.length > PHOTO_MAX_BYTES) {
+        return reply.code(400).send({ message: `Photo "${file.filename}" exceeds 10 MB limit` })
+      }
+      if (type === 'video' && buffer.length > VIDEO_MAX_BYTES) {
+        return reply.code(400).send({ message: `Video "${file.filename}" exceeds 100 MB limit` })
+      }
+
+      files.push({ buffer, mimetype, type })
     }
 
-    const { mimetype } = file
-    let type
-    if (mimetype.startsWith('video/')) {
-      type = 'video'
-    } else if (mimetype.startsWith('image/')) {
-      type = 'photo'
-    } else {
-      return reply.code(400).send({ message: 'Unsupported file type. Upload an image or video.' })
-    }
-
-    const buffer = await file.toBuffer()
-
-    // Per-file size enforcement
-    if (type === 'photo' && buffer.length > PHOTO_MAX_BYTES) {
-      return reply.code(400).send({ message: 'Photo exceeds 10 MB limit' })
-    }
-    if (type === 'video' && buffer.length > VIDEO_MAX_BYTES) {
-      return reply.code(400).send({ message: 'Video exceeds 100 MB limit' })
+    if (files.length === 0) {
+      return reply.code(400).send({ message: 'No files uploaded' })
     }
 
     const userId = new ObjectId(request.user.id)
 
-    // Per-user storage quota check
-    const quota = type === 'video' ? VIDEO_QUOTA_BYTES : PHOTO_QUOTA_BYTES
-    const [agg] = await media.aggregate([
-      { $match: { userId, type, deletedAt: { $exists: false } } },
-      { $group: { _id: null, totalSize: { $sum: '$fileSize' } } }
-    ]).toArray()
-    const usedBytes = agg?.totalSize ?? 0
-    if (usedBytes + buffer.length > quota) {
-      return reply.code(400).send({ message: `${type} storage quota exceeded` })
+    // Quota check: compare existing usage + all new bytes per type in one pass
+    const newPhotoBytes = files.filter(f => f.type === 'photo').reduce((sum, f) => sum + f.buffer.length, 0)
+    const newVideoBytes = files.filter(f => f.type === 'video').reduce((sum, f) => sum + f.buffer.length, 0)
+
+    const [photoAgg, videoAgg] = await Promise.all([
+      newPhotoBytes > 0 ? media.aggregate([
+        { $match: { userId, type: 'photo', deletedAt: { $exists: false } } },
+        { $group: { _id: null, totalSize: { $sum: '$fileSize' } } }
+      ]).toArray() : [],
+      newVideoBytes > 0 ? media.aggregate([
+        { $match: { userId, type: 'video', deletedAt: { $exists: false } } },
+        { $group: { _id: null, totalSize: { $sum: '$fileSize' } } }
+      ]).toArray() : []
+    ])
+
+    if (newPhotoBytes > 0 && ((photoAgg[0]?.totalSize ?? 0) + newPhotoBytes > PHOTO_QUOTA_BYTES)) {
+      return reply.code(400).send({ message: 'Photo storage quota exceeded' })
+    }
+    if (newVideoBytes > 0 && ((videoAgg[0]?.totalSize ?? 0) + newVideoBytes > VIDEO_QUOTA_BYTES)) {
+      return reply.code(400).send({ message: 'Video storage quota exceeded' })
     }
 
-    // Upload to cloud storage
-    const uploadResult = await storage.upload(buffer, {
-      folder: `wedding/${request.user.telegramId}`,
-      mimetype
-    })
+    // Upload all files in parallel
+    const uploadResults = await Promise.all(
+      files.map(f => storage.upload(f.buffer, {
+        folder: `wedding/${request.user.telegramId}`,
+        mimetype: f.mimetype
+      }))
+    )
 
     const now = new Date()
     let gallery = await galleries.findOne({ userId, deletedAt: { $exists: false } })
 
-    // Create gallery if first upload
     if (!gallery) {
+      const firstPhoto = uploadResults.find((_, i) => files[i].type === 'photo')
       const result = await galleries.insertOne({
         userId,
-        coverPhotoUrl: uploadResult.thumbnailUrl,
+        coverPhotoUrl: firstPhoto?.thumbnailUrl ?? uploadResults[0].thumbnailUrl,
         photoCount: 0,
         videoCount: 0,
         createdAt: now,
@@ -293,29 +310,32 @@ module.exports = async (fastify) => {
       gallery = await galleries.findOne({ _id: result.insertedId })
     }
 
-    // Save media record
-    await media.insertOne({
-      galleryId: gallery._id,
-      userId,
-      type,
-      cloudId: uploadResult.cloudId,
-      url: uploadResult.url,
-      thumbnailUrl: uploadResult.thumbnailUrl,
-      width: uploadResult.width,
-      height: uploadResult.height,
-      duration: uploadResult.duration,
-      fileSize: buffer.length,
-      uploadedAt: now
-    })
-
-    // Increment the right counter
-    const countField = type === 'video' ? 'videoCount' : 'photoCount'
-    await galleries.updateOne(
-      { _id: gallery._id },
-      { $inc: { [countField]: 1 }, $set: { updatedAt: now } }
+    // Insert all media records
+    await media.insertMany(
+      files.map((f, i) => ({
+        galleryId: gallery._id,
+        userId,
+        type: f.type,
+        cloudId: uploadResults[i].cloudId,
+        url: uploadResults[i].url,
+        thumbnailUrl: uploadResults[i].thumbnailUrl,
+        width: uploadResults[i].width,
+        height: uploadResults[i].height,
+        duration: uploadResults[i].duration,
+        fileSize: f.buffer.length,
+        uploadedAt: now
+      }))
     )
 
-    return { message: `${type === 'video' ? 'Video' : 'Photo'} uploaded successfully` }
+    // Increment counters
+    const addedPhotos = files.filter(f => f.type === 'photo').length
+    const addedVideos = files.filter(f => f.type === 'video').length
+    const inc = {}
+    if (addedPhotos > 0) inc.photoCount = addedPhotos
+    if (addedVideos > 0) inc.videoCount = addedVideos
+    await galleries.updateOne({ _id: gallery._id }, { $inc: inc, $set: { updatedAt: now } })
+
+    return { message: `Uploaded ${files.length} file${files.length > 1 ? 's' : ''} successfully` }
   })
 
   // Soft delete — guest marks media as deleted
