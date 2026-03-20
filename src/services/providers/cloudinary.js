@@ -10,9 +10,12 @@ module.exports = {
   async upload(buffer, { folder, mimetype }) {
     const resourceType = mimetype.startsWith('video/') ? 'video' : 'image'
 
+    const uploadOptions = { folder, resource_type: resourceType }
+    if (resourceType === 'image') uploadOptions.format = 'jpg'
+
     const result = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_stream(
-        { folder, resource_type: resourceType },
+        uploadOptions,
         (error, result) => {
           if (error) reject(error)
           else resolve(result)
